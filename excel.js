@@ -1,80 +1,178 @@
 const $ = el => document.querySelector(el)
-const $$ = el => document.querySelectorAll(el)
-const $table = $('table')
-const $body = $('tbody')
-const $head = $('thead')
-//Filas y columnas 
-const ROWS = 30
-const COLUMS = 21
-const FISTR_CHAR = 65
-// Utilidad  dibujar las columnas dentro del body 
+    const $$ = el => document.querySelectorAll(el)
 
-const times = length => Array.from({ length }, (_, i)=>i)
-const getColumn = i => String.fromCharCode(FISTR_CHAR + i)
-// variables 
-let STATE = times(COLUMS)
-.map(i => times(ROWS).map(j => ({computedValue: '', value: '' })))
+    const $table = $('table')
+    const $head = $('thead')
+    const $body = $('tbody')
 
-console.log(STATE)
+    const ROWS = 10
+    const COLUMNS = 5
+    const FIRST_CHAR_CODE = 65
 
-function updateCell ({x, y, value}){
-    //copia profunda del Array STATE 
-    const newState = structuredClone(STATE)
-    const cell = newState[x][y]
-    const computedValue = Number(value)
+    const times = length => Array.from({ length }, (_, i) => i)
+    const getColumn = i => String.fromCharCode(FIRST_CHAR_CODE + i)
 
-    cell.value = value //input
-    cell.computedValue = computedValue //Span
+    let selectedColumn = null
 
-    newState[x][y] =cell
+    let STATE = times(COLUMNS)
+      .map(i => times(ROWS).map(j => ({ computedValue: 0, value: 0 })))
 
-    STATE = newState
+    console.log(STATE)
 
-    renderSpreadsheets()
-}
+    function updateCell({ x, y, value }) {
+      const newState = structuredClone(STATE)
+      const constants = generateCellsConstants(newState)
 
-const renderSpreadsheets = () =>{
-    const headerHTML = `<tr>
-        <th></th>
-        ${times(COLUMS).map(i => `<th>${getColumn(i)}</th>`).join('')}
-    </tr>`
-    //Se crea las columnas con el codigo de la letra, en este caso dibuja un array desde la posicion 65 = A hasta el valor que determinemos en en la constante COLUMNS
-    $head.innerHTML = headerHTML
-    
-    const bodyHTML = times(ROWS).map(row =>{return `<tr>
-        <td> ${row +1 }</td>
-         ${times(COLUMS).map(column=>`
-            <td data-x="${column}" data-y = ${ROWS}">
-                <span>${STATE[column][row].computedValue}</span>
-                <input type="text" value="${STATE[column][row].value}"/>
-            </td>
-            `).join('')}
-    </tr>`}).join('')
-    //Se dibujo la fila en el td, contando un total de 10 , se realiza ultimo join para quitar las comas separadoras y dentro del th se dibujaron las columnas. 
+      const cell = newState[x][y]
 
-    $body.innerHTML = bodyHTML
+      cell.computedValue = computeValue(value, constants) // -> span
+      cell.value = value // -> input
 
-}
-$body.addEventListener('click', event =>{
-    const td = event.target.closest('td')
-    if(!td) return
-    const { x, y } = td.dataset
-    const input =td.querySelector('input')
-    const span =td.querySelector('span')
+      newState[x][y] = cell
 
-    const end = input.value.length
-    //Pocicion del cursor dentro del input 
-    input.setSelectionRange(end, end)
-    td.classList.add('editing')
-    input.focus()
-    
-    input.addEventListener('blur', () => {
+      computeAllCells(newState, generateCellsConstants(newState))
+
+      STATE = newState
+
+      renderSpreadSheet()
+    }
+
+    function generateCellsConstants(cells) {
+      return cells.map((rows, x) => {
+        return rows.map((cell, y) => {
+          const letter = getColumn(x) // -> A
+          const cellId = `${letter}${y + 1}` // -> A1
+          return `const ${cellId} = ${cell.computedValue};`
+        }).join('\n')
+      }).join('\n')
+    }
+
+    function computeAllCells(cells, constants) {
+      console.log('computeAllCells')
+      cells.forEach((rows, x) => {
+        rows.forEach((cell, y) => {
+          const computedValue = computeValue(cell.value, constants)
+          cell.computedValue = computedValue
+        })
+      })
+    }
+
+    function computeValue(value, constants) {
+      if (typeof value === 'number') return value
+      if (!value.startsWith('=')) return value
+
+      const formula = value.slice(1)
+
+      let computedValue
+      try {
+        computedValue = eval(`(() => {
+        ${constants}
+        return ${formula};
+      })()`)
+      } catch (e) {
+        computedValue = `!ERROR: ${e.message}`
+      }
+
+      console.log({ value, computedValue })
+
+      return computedValue
+    }
+
+    const renderSpreadSheet = () => {
+      const headerHTML = `<tr>
+          <th></th>
+          ${times(COLUMNS).map(i => `<th>${getColumn(i)}</th>`).join('')}
+        </tr>`
+
+      $head.innerHTML = headerHTML
+
+      const bodyHTML = times(ROWS).map(row => {
+        return `<tr>
+          <td>${row + 1}</td>
+          ${times(COLUMNS).map(column => `
+          <td data-x="${column}" data-y="${row}">
+            <span>${STATE[column][row].computedValue}</span>
+            <input type="text" value="${STATE[column][row].value}" />
+          </td>
+          `).join('')}
+        </tr>`
+      }).join('')
+
+      $body.innerHTML = bodyHTML
+    }
+
+    $body.addEventListener('click', event => {
+      const td = event.target.closest('td')
+      if (!td) return
+
+      const { x, y } = td.dataset
+      const input = td.querySelector('input')
+      const span = td.querySelector('span')
+
+      const end = input.value.length
+      input.setSelectionRange(end, end)
+      input.focus()
+
+      $$('.selected').forEach(el => el.classList.remove('selected'))
+      selectedColumn = null
+
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') input.blur()
+      })
+
+      input.addEventListener('blur', () => {
         console.log({ value: input.value, state: STATE[x][y].value })
 
         if (input.value === STATE[x][y].value) return
 
         updateCell({ x, y, value: input.value })
-    //Escuchar el evento en el input una sola vez 
-    },{once: true})
-})
-renderSpreadsheets()
+      }, { once: true })
+    })
+
+    $head.addEventListener('click', event => {
+      const th = event.target.closest('th')
+      if (!th) return
+
+      const x = [...th.parentNode.children].indexOf(th)
+      if (x <= 0) return
+
+      selectedColumn = x - 1
+
+      $$('.selected').forEach(el => el.classList.remove('selected'))
+      th.classList.add('selected')
+      $$(`tr td:nth-child(${x + 1})`).forEach(el => el.classList.add('selected'))
+    })
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Backspace' && selectedColumn !== null) {
+        times(ROWS).forEach(row => {
+          updateCell({ x: selectedColumn, y: row, value: '' })
+        })
+        renderSpreadSheet()
+      }
+    })
+
+    document.addEventListener('copy', event => {
+      if (selectedColumn !== null) {
+        const columnValues = times(ROWS).map(row => {
+          return STATE[selectedColumn][row].computedValue
+        })
+
+        event.clipboardData.setData('text/plain', columnValues.join('\n'))
+        event.preventDefault()
+      }
+    })
+
+    document.addEventListener('click', event => {
+      const { target } = event
+
+      const isThClicked = target.closest('th')
+      const isTdClicked = target.closest('td')
+
+      if (!isThClicked && !isTdClicked) {
+        $$('.selected').forEach(el => el.classList.remove('selected'))
+        selectedColumn = null
+      }
+    })
+
+    renderSpreadSheet()
