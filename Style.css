@@ -32,7 +32,7 @@ td, th{
 }
 td:active{
     border-radius: 2px;
-    outline: 2px solid rgb(4, 88, 29);
+    
 }
 
 span, input {
@@ -54,5 +54,9 @@ input{
     opacity: 0;
     pointer-events: none;
     width: 100%;
+    &:focus{ 
+        outline: 2px solid rgb(4, 88, 29);
+        opacity: 1;
+    }
 }
 
