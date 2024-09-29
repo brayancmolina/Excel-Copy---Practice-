@@ -3,12 +3,23 @@ const $$ = el => document.querySelectorAll(el)
 
 //Filas y columnas 
 
-const ROWS = 10
-const COLUMS = 10
+const ROWS = 30
+const COLUMS = 21
+const FISTR_CHAR = 65
+
+
 
 // Utilidad  dibujar las columnas dentro del body 
 
-const range = length => Array.from({ length }, (_, i)=>i)
+const times = length => Array.from({ length }, (_, i)=>i)
+const getColumn = i => String.fromCharCode(FISTR_CHAR + i)
+// variables 
+
+let STATE = times(COLUMS)
+.map(i => times(ROWS).map(j => ({computedValue: '', value: j })))
+
+console.log(STATE)
+
 const renderSpreadsheets = () =>{
     const $table = $('table')
     const $body = $('tbody')
@@ -16,16 +27,19 @@ const renderSpreadsheets = () =>{
 
     const headerHTML = `<tr>
         <th></th>
-        ${range(COLUMS).map(i => `<th>${i}</th>`).join('')}
+        
+        ${times(COLUMS).map(i => `<th>${getColumn(i)}</th>`).join('')}
+    
     </tr>`
+    //Se crea las columnas con el codigo de la letra, en este caso dibuja un array desde la posicion 65 = A hasta el valor que determinemos en en la constante COLUMNS
     $head.innerHTML = headerHTML
     
-    const bodyHTML = range(ROWS).map(row =>{return `<tr>
+    const bodyHTML = times(ROWS).map(row =>{return `<tr>
         <td> ${row +1 }</td>
-         ${range(COLUMS).map(column=>`
+         ${times(COLUMS).map(column=>`
             <td data-x="${column}" data-y = ${ROWS}">
-                <span></span>
-                <input type="text" value=""/>
+                <span>${STATE[column][row].computedValue}</span>
+                <input type="text" value="${STATE[column][row].value}"/>
             </td>
             `).join('')}
     </tr>`}).join('')
