@@ -74,7 +74,6 @@ $body.addEventListener('click', event =>{
         if (input.value === STATE[x][y].value) return
 
         updateCell({ x, y, value: input.value })
-    //Escuchar el evento en el input una sola vez 
-    },{once: true})
+      }, { once: true })
 })
 renderSpreadsheets()
